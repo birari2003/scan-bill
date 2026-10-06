@@ -1,0 +1,7 @@
+node_modules/
+uploads/
+uploads_processed/
+.env
+logs/
+*.log
+uploads/
