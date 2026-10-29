@@ -1,10 +1,12 @@
 const { Model } = require('sequelize');
 
 const DOCUMENT_TYPES = ['bill', 'invoice', 'quotation', 'estimate', 'job_card', 'receipt', 'other'];
+const GST_TYPES = ['none', 'default', 'custom'];
+const DEFAULT_GST_RATE = 18;
 
 // DECIMAL columns come back from mysql2 as strings; expose them as numbers.
-const decimal = (DataTypes, field, defaultValue = 0) => ({
-  type: DataTypes.DECIMAL(14, 2),
+const decimal = (DataTypes, field, defaultValue = 0, precision = 14) => ({
+  type: DataTypes.DECIMAL(precision, 2),
   allowNull: false,
   defaultValue,
   get() {
@@ -37,6 +39,9 @@ module.exports = (sequelize, DataTypes) => {
       mobile: DataTypes.STRING(50),
       subTotal: decimal(DataTypes, 'subTotal'),
       extraCharges: decimal(DataTypes, 'extraCharges'),
+      gstType: { type: DataTypes.ENUM(...GST_TYPES), allowNull: false, defaultValue: 'none' },
+      gstRate: decimal(DataTypes, 'gstRate', 0, 5),
+      gstAmount: decimal(DataTypes, 'gstAmount'),
       grandTotal: decimal(DataTypes, 'grandTotal'),
       amountInWords: DataTypes.STRING(500),
       notes: DataTypes.TEXT,
@@ -53,5 +58,7 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   Bill.DOCUMENT_TYPES = DOCUMENT_TYPES;
+  Bill.GST_TYPES = GST_TYPES;
+  Bill.DEFAULT_GST_RATE = DEFAULT_GST_RATE;
   return Bill;
 };

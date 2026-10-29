@@ -49,6 +49,9 @@ function serializeBill(bill, rawText = '') {
     items,
     subTotal: bill.subTotal,
     extraCharges: bill.extraCharges,
+    gstType: bill.gstType || 'none',
+    gstRate: bill.gstRate,
+    gstAmount: bill.gstAmount,
     grandTotal: bill.grandTotal,
     amountInWords: str(bill.amountInWords),
     notes: str(bill.notes),
@@ -201,6 +204,25 @@ async function getFileForDownload(fileId, userId) {
 
 // ---------- Bill editing ----------
 
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// GST is charged on the sub total. With GST applied the grand total is derived
+// (sub total + extra charges + GST); with 'none' a manually entered grand total is kept.
+function applyGst(bill, fields) {
+  const gstType = fields.gstType ?? bill.gstType ?? 'none';
+  const subTotal = fields.subTotal ?? bill.subTotal;
+  const extraCharges = fields.extraCharges ?? bill.extraCharges;
+
+  let gstRate = 0;
+  if (gstType === 'default') gstRate = Bill.DEFAULT_GST_RATE;
+  else if (gstType === 'custom') gstRate = fields.gstRate ?? bill.gstRate;
+
+  const gstAmount = round2((subTotal * gstRate) / 100);
+  const result = { ...fields, gstType, gstRate, gstAmount };
+  if (gstType !== 'none') result.grandTotal = round2(subTotal + extraCharges + gstAmount);
+  return result;
+}
+
 async function updateBill(userId, billId, data) {
   const bill = await Bill.findOne({
     where: { [Op.or]: [{ id: billId }, { fileId: billId }] },
@@ -211,7 +233,7 @@ async function updateBill(userId, billId, data) {
   const { items, ...fields } = data;
   await sequelize.transaction(async (transaction) => {
     await bill.update(
-      { ...fields, billDate: fields.billDate === '' ? null : fields.billDate },
+      { ...applyGst(bill, fields), billDate: fields.billDate === '' ? null : fields.billDate },
       { transaction }
     );
     if (items) {

@@ -27,6 +27,9 @@ const updateBillBody = z.object({
   mobile: text(50),
   subTotal: money.optional(),
   extraCharges: money.optional(),
+  // gstAmount is always computed server-side, so it is not accepted here.
+  gstType: z.enum(['none', 'default', 'custom']).optional(),
+  gstRate: z.coerce.number().finite().min(0, 'GST rate cannot be negative').max(100, 'GST rate cannot exceed 100%').optional(),
   grandTotal: money.optional(),
   amountInWords: text(500),
   notes: text(5000),
