@@ -6,6 +6,7 @@ const { removeFile } = require('../utils/fileStorage');
 const { signFileToken } = require('../utils/fileToken');
 const extraction = require('./extraction.service');
 const stockService = require('./stock.service');
+const { renderBillPdf, billPdfFileName } = require('./billPdf.service');
 
 const SORT_COLUMNS = {
   uploadedAt: [['createdAt']],
@@ -254,6 +255,20 @@ async function updateBill(userId, billId, data) {
   return serializeBill(fresh, str(bill.file.ocrText));
 }
 
+async function getBillPdf(userId, billId) {
+  const bill = await Bill.findOne({
+    where: { [Op.or]: [{ id: billId }, { fileId: billId }] },
+    include: [
+      { model: File, as: 'file', where: { userId }, required: true, attributes: [] },
+      { model: BillItem, as: 'items' },
+    ],
+  });
+  if (!bill) throw ApiError.notFound('Bill not found');
+
+  const data = serializeBill(bill);
+  return { buffer: await renderBillPdf(data), fileName: billPdfFileName(data) };
+}
+
 // ---------- Dashboard ----------
 
 async function dashboardStats(userId) {
@@ -335,5 +350,6 @@ module.exports = {
   deleteFile,
   getFileForDownload,
   updateBill,
+  getBillPdf,
   dashboardStats,
 };

@@ -11,6 +11,23 @@ const resolveModelId = async (modelId) => {
   return modelId;
 };
 
+// newStock is the quantity just brought in: it tops up both counters and is kept as
+// the last restock. Sent as 0 it adds nothing and the previous restock stays on record.
+const applyNewStock = (data, stock = {}) => {
+  const { newStock: rawNewStock, ...fields } = data;
+  const newStock = Number(rawNewStock ?? 0);
+  if (!Number.isInteger(newStock) || newStock < 0) {
+    throw ApiError.badRequest('New stock must be a whole number, 0 or more');
+  }
+  if (!newStock) return fields;
+  return {
+    ...fields,
+    newStock,
+    quantity: Number(fields.quantity ?? stock.quantity ?? 0) + newStock,
+    totalStock: Number(fields.totalStock ?? stock.totalStock ?? 0) + newStock,
+  };
+};
+
 const getAllStocks = async () => Stock.findAll(withModel);
 
 const getStockById = async (id) => {
@@ -20,7 +37,7 @@ const getStockById = async (id) => {
 };
 
 const createStock = async (data) => {
-  const stock = await Stock.create({ ...data, modelId: await resolveModelId(data.modelId) });
+  const stock = await Stock.create({ ...applyNewStock(data), modelId: await resolveModelId(data.modelId) });
   return getStockById(stock.id);
 };
 
@@ -28,7 +45,8 @@ const updateStock = async (id, data) => {
   const stock = await Stock.findByPk(id);
   if (!stock) throw new ApiError(404, 'NOT_FOUND', 'Stock not found');
   const modelId = await resolveModelId(data.modelId);
-  await stock.update(modelId === undefined ? data : { ...data, modelId });
+  const fields = applyNewStock(data, stock);
+  await stock.update(modelId === undefined ? fields : { ...fields, modelId });
   return getStockById(id);
 };
 

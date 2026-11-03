@@ -7,6 +7,7 @@ const { updateBillBody, billIdParams } = require('../validators/bill.validator')
 const router = Router();
 
 router.use(authenticate);
+router.get('/:id/pdf', validate(billIdParams, 'params'), billController.pdf);
 router.put('/:id', validate(billIdParams, 'params'), validate(updateBillBody), billController.update);
 
 module.exports = router;
